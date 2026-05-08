@@ -1,0 +1,22 @@
+{
+  "type": "record",
+  "name": "ChangeEvent",
+  "namespace": "meridian",
+  "doc": "A Wikimedia recent-change event (v1)",
+  "fields": [
+    {"name": "id", "type": "long", "doc": "Event ID (rcid)"},
+    {"name": "type", "type": "string", "doc": "Event type (edit, new, log, etc.)"},
+    {"name": "namespace", "type": "int", "doc": "Namespace number"},
+    {"name": "title", "type": "string", "doc": "Page title"},
+    {"name": "title_url", "type": "string", "doc": "URL-encoded page title"},
+    {"name": "comment", "type": "string", "doc": "Edit comment"},
+    {"name": "timestamp", "type": "long", "doc": "Unix timestamp of the change"},
+    {"name": "user", "type": "string", "doc": "Contributor username or IP"},
+    {"name": "bot", "type": "boolean", "doc": "Whether the edit is by a bot"},
+    {"name": "server_url", "type": "string", "doc": "Wiki server URL"},
+    {"name": "server_name", "type": "string", "doc": "Wiki server name"},
+    {"name": "server_script_url", "type": "string", "doc": "Wiki script URL"},
+    {"name": "wiki", "type": "string", "doc": "Wiki identifier (e.g., enwiki)"},
+    {"name": "parsed_timestamp", "type": "long", "doc": "Parsed Unix timestamp (UTC)"}
+  ]
+}

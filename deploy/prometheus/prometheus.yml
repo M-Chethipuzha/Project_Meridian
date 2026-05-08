@@ -1,0 +1,42 @@
+# Meridian Stream — Prometheus Configuration
+# Sprint 3 — Metrics, Grafana, Lag Monitoring
+# v0.4.0
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Producer service metrics
+  - job_name: "meridian-producer"
+    static_configs:
+      - targets: ["host.docker.internal:8081"]
+        labels:
+          service: "producer"
+
+  # Consumer service metrics
+  - job_name: "meridian-consumer"
+    static_configs:
+      - targets: ["host.docker.internal:8082"]
+        labels:
+          service: "consumer"
+
+  # Redpanda broker metrics
+  - job_name: "redpanda"
+    static_configs:
+      - targets: ["redpanda:9644"]
+        labels:
+          service: "redpanda"
+
+  # MinIO metrics
+  - job_name: "minio"
+    metrics_path: "/minio/v2/metrics/cluster"
+    static_configs:
+      - targets: ["minio:9000"]
+        labels:
+          service: "minio"
+
+  # Prometheus itself
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]

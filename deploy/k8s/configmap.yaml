@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: meridian-config
+  namespace: meridian
+  labels:
+    app.kubernetes.io/name: meridian-stream
+    app.kubernetes.io/part-of: meridian
+data:
+  # Redpanda
+  KAFKA_BROKERS: "redpanda.meridian.svc.cluster.local:9092"
+  KAFKA_TOPIC: "recentchanges"
+  KAFKA_GROUP: "meridian-consumer"
+  # Schema Registry
+  SCHEMA_REGISTRY_URL: "http://redpanda.meridian.svc.cluster.local:8081"
+  # MinIO
+  MINIO_ENDPOINT: "minio.meridian.svc.cluster.local:9000"
+  MINIO_BUCKET: "events"
+  MINIO_REGION: "us-east-1"
+  # Wikimedia
+  WIKIMEDIA_STREAM_URL: "https://stream.wikimedia.org/v2/stream/recentchange"
+  # Consumer tuning
+  DLQ_TOPIC: "recentchanges-dlq"
+  MAX_RETRIES: "3"
+  BACKPRESSURE_LIMIT: "10000"
+  LAG_INTERVAL: "30s"
+  STARTUP_RETRY_INTERVAL: "5s"
+  STARTUP_MAX_RETRIES: "6"
+  # Metrics
+  PRODUCER_METRICS_ADDR: ":8081"
+  CONSUMER_METRICS_ADDR: ":8082"
+  REPLAY_METRICS_ADDR: ":8083"
+  AMPLIFIER_METRICS_ADDR: ":8084"
