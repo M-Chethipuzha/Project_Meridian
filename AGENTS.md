@@ -1,17 +1,11 @@
 # Meridian Stream — Agent Operating System
 
-Version: 1.0
-Project: Meridian Stream
-Tagline: Real-Time Event Ingestion, Processing, and Analytics Pipeline
-
-## Mission
-Build a portfolio-grade distributed systems project demonstrating Data Engineering, Event Streaming, Reliability Engineering, Observability, Performance Engineering, and Cloud-Native Architecture.
-
 ## Sprint Roadmap
-Sprint 0: Bootstrap (v0.1.0) — Repository scaffold, Docker Compose, Makefile, CI Pipeline, ADR Structure
+Sprint 0: Bootstrap (v0.1.0) — Complete
+Sprint 1: E2E Pipeline (v0.2.0) — Wikimedia SSE, Redpanda producer/consumer, console sink
 
-## Current Sprint: Sprint 0
-## Current Target: v0.1.0
+## Current Sprint: Sprint 1
+## Current Target: v0.2.0
 
 ## Engineering Principles
 1. Working software over mock implementations
