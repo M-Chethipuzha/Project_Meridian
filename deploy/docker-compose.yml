@@ -1,42 +1,57 @@
-# Meridian Stream — Sprint 0
 services:
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.2.10
     container_name: meridian-redpanda
     command:
-      - redpanda
-      - start
-      - --smp
-      - "1"
-      - --overprovisioned
-      - --kafka-addr
-      - internal://0.0.0.0:9092,external://0.0.0.0:19092
-      - --advertise-kafka-addr
-      - internal://redpanda:9092,external://localhost:19092
-      - --pandaproxy-addr
-      - 0.0.0.0:8082
+      - redpanda start --smp 1 --overprovisioned
+      - --set redpanda.enable_transactions=true
+      - --set redpanda.enable_idempotence=true
+      - --set redpanda.auto_create_topics_enabled=true
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --schema-registry-addr 0.0.0.0:8081
     ports:
-      - "19092:19092"
-      - "8082:8082"
+      - "19092:19092"  # Kafka API
+      - "8081:8081"    # Schema Registry
+      - "8082:8082"    # HTTP Proxy
     volumes:
       - redpanda_data:/var/lib/redpanda/data
     healthcheck:
       test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
-      start_period: 30s
+      interval: 10s; timeout: 5s; retries: 15; start_period: 30s
 
   console:
     image: docker.redpanda.com/redpandadata/console:v2.7.2
     container_name: meridian-console
-    depends_on:
-      redpanda: { condition: service_healthy }
-    ports:
-      - "8080:8080"
+    depends_on: { redpanda: { condition: service_healthy } }
+    ports: ["8080:8080"]
     environment:
       KAFKA_BROKERS: redpanda:9092
-    restart: unless-stopped
+      KAFKA_SCHEMAREGISTRY_ENABLED: "true"
+      KAFKA_SCHEMAREGISTRY_URLS: http://redpanda:8081
 
-volumes:
-  redpanda_data:
+  minio:
+    image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
+    container_name: meridian-minio
+    command: server /data --console-address ":9001"
+    ports: ["9000:9000", "9001:9001"]
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_REGION: us-east-1
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s; timeout: 5s; retries: 5; start_period: 30s
+
+  minio-setup:
+    image: quay.io/minio/mc:RELEASE.2024-12-18T10-45-02Z
+    container_name: meridian-minio-setup
+    depends_on: { minio: { condition: service_healthy } }
+    entrypoint: >
+      /bin/sh -c "sleep 2 && mc alias set meridian http://minio:9000 minioadmin minioadmin && mc mb meridian/events --ignore-existing && echo 'Bucket ready'"
+    restart: "no"
+
+volumes: { redpanda_data: {}, minio_data: {} }
