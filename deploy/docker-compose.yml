@@ -12,9 +12,9 @@ services:
       - --pandaproxy-addr 0.0.0.0:8082
       - --schema-registry-addr 0.0.0.0:8081
     ports:
-      - "19092:19092"  # Kafka API
-      - "8081:8081"    # Schema Registry
-      - "8082:8082"    # HTTP Proxy
+      - "19092:19092"
+      - "8081:8081"
+      - "8082:8082"
     volumes:
       - redpanda_data:/var/lib/redpanda/data
     healthcheck:
@@ -54,4 +54,63 @@ services:
       /bin/sh -c "sleep 2 && mc alias set meridian http://minio:9000 minioadmin minioadmin && mc mb meridian/events --ignore-existing && echo 'Bucket ready'"
     restart: "no"
 
-volumes: { redpanda_data: {}, minio_data: {} }
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    container_name: meridian-prometheus
+    command: --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus
+    ports: ["9090:9090"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  grafana:
+    image: grafana/grafana:11.5.2
+    container_name: meridian-grafana
+    ports: ["3000:3000"]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - grafana_data:/var/lib/grafana
+
+  producer:
+    build:
+      context: ..
+      dockerfile: deploy/docker/producer.Dockerfile
+    container_name: meridian-producer
+    ports: ["8081:8081"]
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_TOPIC: recentchanges
+      SCHEMA_REGISTRY_URL: http://redpanda:8081
+      METRICS_ADDR: :8081
+    depends_on: { redpanda: { condition: service_healthy } }
+
+  consumer:
+    build:
+      context: ..
+      dockerfile: deploy/docker/consumer.Dockerfile
+    container_name: meridian-consumer
+    ports: ["8082:8082"]
+    environment:
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_TOPIC: recentchanges
+      KAFKA_GROUP: meridian-consumer
+      SCHEMA_REGISTRY_URL: http://redpanda:8081
+      METRICS_ADDR: :8082
+      MINIO_ENDPOINT: minio:9000
+      MINIO_BUCKET: events
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      DLQ_TOPIC: recentchanges-dlq
+      MAX_RETRIES: "3"
+      BACKPRESSURE_LIMIT: "10000"
+    depends_on: { redpanda: { condition: service_healthy }, minio: { condition: service_healthy } }
+
+volumes:
+  redpanda_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
