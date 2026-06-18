@@ -28,31 +28,47 @@ spec:
             - containerPort: 8081
               name: metrics
           envFrom:
-            - configMapRef: { name: meridian-config }
-            - secretRef: { name: meridian-secret }
+            - configMapRef:
+                name: meridian-config
+            - secretRef:
+                name: meridian-secret
           env:
             - name: METRICS_ADDR
               value: ":8081"
           livenessProbe:
-            httpGet: { path: /healthz, port: metrics }
-            initialDelaySeconds: 5; periodSeconds: 15
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 15
           readinessProbe:
-            httpGet: { path: /readyz, port: metrics }
-            initialDelaySeconds: 3; periodSeconds: 10
+            httpGet:
+              path: /readyz
+              port: metrics
+            initialDelaySeconds: 3
+            periodSeconds: 10
           resources:
-            requests: { cpu: 100m, memory: 64Mi }
-            limits: { cpu: 500m, memory: 256Mi }
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: producer
   namespace: meridian
-  labels: { app.kubernetes.io/component: producer }
+  labels:
+    app.kubernetes.io/component: producer
 spec:
-  selector: { app.kubernetes.io/component: producer }
+  selector:
+    app.kubernetes.io/component: producer
   ports:
-    - port: 8081; targetPort: metrics; name: metrics
+    - port: 8081
+      targetPort: metrics
+      name: metrics
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -61,10 +77,15 @@ metadata:
   namespace: meridian
 spec:
   scaleTargetRef:
-    apiVersion: apps/v1; kind: Deployment; name: producer
-  minReplicas: 1; maxReplicas: 3
+    apiVersion: apps/v1
+    kind: Deployment
+    name: producer
+  minReplicas: 1
+  maxReplicas: 3
   metrics:
     - type: Resource
       resource:
         name: cpu
-        target: { type: Utilization; averageUtilization: 70 }
+        target:
+          type: Utilization
+          averageUtilization: 70

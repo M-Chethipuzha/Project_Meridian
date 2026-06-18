@@ -3,14 +3,18 @@ kind: Deployment
 metadata:
   name: consumer
   namespace: meridian
-  labels: { app.kubernetes.io/name: meridian-stream, app.kubernetes.io/component: consumer }
+  labels:
+    app.kubernetes.io/name: meridian-stream
+    app.kubernetes.io/component: consumer
 spec:
   replicas: 1
   selector:
-    matchLabels: { app.kubernetes.io/component: consumer }
+    matchLabels:
+      app.kubernetes.io/component: consumer
   template:
     metadata:
-      labels: { app.kubernetes.io/component: consumer }
+      labels:
+        app.kubernetes.io/component: consumer
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8082"
@@ -21,44 +25,74 @@ spec:
           image: meridian/consumer:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8082; name: metrics
+            - containerPort: 8082
+              name: metrics
           envFrom:
-            - configMapRef: { name: meridian-config }
-            - secretRef: { name: meridian-secret }
+            - configMapRef:
+                name: meridian-config
+            - secretRef:
+                name: meridian-secret
           env:
-            - name: METRICS_ADDR; value: ":8082"
+            - name: METRICS_ADDR
+              value: ":8082"
           livenessProbe:
-            httpGet: { path: /healthz, port: metrics }
-            initialDelaySeconds: 10; periodSeconds: 20
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 20
           readinessProbe:
-            httpGet: { path: /readyz, port: metrics }
-            initialDelaySeconds: 5; periodSeconds: 10
+            httpGet:
+              path: /readyz
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
           resources:
-            requests: { cpu: 200m, memory: 128Mi }
-            limits: { cpu: 1000m, memory: 512Mi }
+            requests:
+              cpu: 200m
+              memory: 128Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: consumer; namespace: meridian
-  labels: { app.kubernetes.io/component: consumer }
+  name: consumer
+  namespace: meridian
+  labels:
+    app.kubernetes.io/component: consumer
 spec:
-  selector: { app.kubernetes.io/component: consumer }
+  selector:
+    app.kubernetes.io/component: consumer
   ports:
-    - port: 8082; targetPort: metrics; name: metrics
+    - port: 8082
+      targetPort: metrics
+      name: metrics
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: consumer; namespace: meridian
+  name: consumer
+  namespace: meridian
 spec:
   scaleTargetRef:
-    apiVersion: apps/v1; kind: Deployment; name: consumer
-  minReplicas: 1; maxReplicas: 5
+    apiVersion: apps/v1
+    kind: Deployment
+    name: consumer
+  minReplicas: 1
+  maxReplicas: 5
   metrics:
     - type: Resource
-      resource: { name: cpu; target: { type: Utilization; averageUtilization: 70 } }
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
     - type: Pods
       pods:
-        metric: { name: meridian_consumer_lag_messages }
-        target: { type: AverageValue; averageValue: 1000 }
+        metric:
+          name: meridian_consumer_lag_messages
+        target:
+          type: AverageValue
+          averageValue: 1000

@@ -2,12 +2,15 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <groupId>meridian</groupId>
     <artifactId>meridian-transformer</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
+
     <name>Meridian Stream — Transformer (Flink)</name>
-    <description>Flink streaming job that reads ChangeEvents from Redpanda, applies windowed aggregations, and writes results to a sink topic.</description>
+    <description>Flink streaming job that reads ChangeEvents from Redpanda, applies windowed aggregations, enriches event data, and writes results to a sink topic.</description>
+
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
@@ -15,6 +18,7 @@
         <kafka.version>3.9.0</kafka.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.flink</groupId>
@@ -49,6 +53,7 @@
             <version>2.18.2</version>
         </dependency>
     </dependencies>
+
     <build>
         <plugins>
             <plugin>
@@ -65,6 +70,16 @@
                                     <mainClass>meridian.stream.EventTransformerJob</mainClass>
                                 </transformer>
                             </transformers>
+                            <relocations>
+                                <relocation>
+                                    <pattern>org.apache.flink</pattern>
+                                    <shadedPattern>meridian.shaded.flink</shadedPattern>
+                                    <includes>
+                                        <include>org.apache.flink.connector**</include>
+                                        <include>org.apache.flink.streaming.connectors**</include>
+                                    </includes>
+                                </relocation>
+                            </relocations>
                         </configuration>
                     </execution>
                 </executions>

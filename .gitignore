@@ -1,25 +1,41 @@
 # Binaries
 bin/
-*.exe *.exe~ *.dll *.so *.dylib
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
-# Test
-*.test *.out *.prof coverage.html
+# Test binary, build with `go test -c`
+*.test
+
+# Output of `go coverage`
+*.out
+*.prof
+coverage.html
 
 # IDE
-.idea/ .vscode/
-*.swp *.swo *~
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 
 # OS
-.DS_Store Thumbs.db
+.DS_Store
+Thumbs.db
 
 # Docker
 .env
 
 # Temp
-/tmp/ temp/
+/tmp/
 
 # Agent / tooling
 .omo/
 
 # Feature store artifacts
 feature-store/data/
+
+# Build artifacts
+temp/

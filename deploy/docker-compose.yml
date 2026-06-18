@@ -1,41 +1,69 @@
+# Meridian Stream — Sprint 6
+# Infrastructure + application services for production-like local deployment
+# v1.0.0
+
 services:
+  # Kafka-compatible broker
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:v24.2.10
     container_name: meridian-redpanda
     command:
-      - redpanda start --smp 1 --overprovisioned
-      - --set redpanda.enable_transactions=true
-      - --set redpanda.enable_idempotence=true
-      - --set redpanda.auto_create_topics_enabled=true
-      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
-      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
-      - --pandaproxy-addr 0.0.0.0:8082
-      - --schema-registry-addr 0.0.0.0:8081
+      - redpanda
+      - start
+      - --smp
+      - "1"
+      - --overprovisioned
+      - --set
+      - redpanda.enable_transactions=true
+      - --set
+      - redpanda.enable_idempotence=true
+      - --set
+      - redpanda.auto_create_topics_enabled=true
+      - --kafka-addr
+      - internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr
+      - internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr
+      - 0.0.0.0:8082
+      - --schema-registry-addr
+      - 0.0.0.0:8081
     ports:
-      - "19092:19092"
-      - "8081:8081"
-      - "8082:8082"
+      - "19092:19092"  # Kafka API (external)
+      - "8081:8081"    # Schema Registry
+      - "8082:8082"    # HTTP Proxy
+      - "9644:9644"    # Admin API
     volumes:
       - redpanda_data:/var/lib/redpanda/data
     healthcheck:
       test: ["CMD-SHELL", "rpk cluster health | grep -q 'Healthy:.*true' || exit 1"]
-      interval: 10s; timeout: 5s; retries: 15; start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
 
+  # Redpanda Console (web UI)
   console:
     image: docker.redpanda.com/redpandadata/console:v2.7.2
     container_name: meridian-console
-    depends_on: { redpanda: { condition: service_healthy } }
-    ports: ["8080:8080"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
     environment:
       KAFKA_BROKERS: redpanda:9092
       KAFKA_SCHEMAREGISTRY_ENABLED: "true"
       KAFKA_SCHEMAREGISTRY_URLS: http://redpanda:8081
+    restart: unless-stopped
 
+  # S3-compatible object store
   minio:
     image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
     container_name: meridian-minio
     command: server /data --console-address ":9001"
-    ports: ["9000:9000", "9001:9001"]
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # Console
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin
@@ -44,73 +72,116 @@ services:
       - minio_data:/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s; timeout: 5s; retries: 5; start_period: 30s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
+  # MinIO bucket initialization
   minio-setup:
     image: quay.io/minio/mc:RELEASE.2024-12-18T10-45-02Z
     container_name: meridian-minio-setup
-    depends_on: { minio: { condition: service_healthy } }
+    depends_on:
+      minio:
+        condition: service_healthy
     entrypoint: >
-      /bin/sh -c "sleep 2 && mc alias set meridian http://minio:9000 minioadmin minioadmin && mc mb meridian/events --ignore-existing && echo 'Bucket ready'"
+      /bin/sh -c "
+      sleep 2 &&
+      mc alias set meridian http://minio:9000 minioadmin minioadmin &&
+      mc mb meridian/events --ignore-existing &&
+      echo 'Bucket meridian/events ready'
+      "
     restart: "no"
 
+  # Prometheus metrics collection
   prometheus:
     image: prom/prometheus:v3.2.1
     container_name: meridian-prometheus
-    command: --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus
-    ports: ["9090:9090"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports:
+      - "9090:9090"
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
+  # Grafana visualization
   grafana:
     image: grafana/grafana:11.5.2
     container_name: meridian-grafana
-    ports: ["3000:3000"]
+    ports:
+      - "3000:3000"
     environment:
       GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_INSTALL_PLUGINS: ""
     volumes:
-      - ./grafana/datasources:/etc/grafana/provisioning/datasources
-      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - grafana_data:/var/lib/grafana
+    restart: unless-stopped
 
+  # Application services (built from source)
   producer:
     build:
       context: ..
       dockerfile: deploy/docker/producer.Dockerfile
     container_name: meridian-producer
-    ports: ["8081:8081"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
     environment:
       KAFKA_BROKERS: redpanda:9092
       KAFKA_TOPIC: recentchanges
       SCHEMA_REGISTRY_URL: http://redpanda:8081
       METRICS_ADDR: :8081
-    depends_on: { redpanda: { condition: service_healthy } }
+      WIKIMEDIA_STREAM_URL: https://stream.wikimedia.org/v2/stream/recentchange
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
 
   consumer:
     build:
       context: ..
       dockerfile: deploy/docker/consumer.Dockerfile
     container_name: meridian-consumer
-    ports: ["8082:8082"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+      minio-setup:
+        condition: service_completed_successfully
     environment:
       KAFKA_BROKERS: redpanda:9092
       KAFKA_TOPIC: recentchanges
       KAFKA_GROUP: meridian-consumer
       SCHEMA_REGISTRY_URL: http://redpanda:8081
-      METRICS_ADDR: :8082
       MINIO_ENDPOINT: minio:9000
       MINIO_BUCKET: events
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
+      METRICS_ADDR: :8082
       DLQ_TOPIC: recentchanges-dlq
       MAX_RETRIES: "3"
       BACKPRESSURE_LIMIT: "10000"
-    depends_on: { redpanda: { condition: service_healthy }, minio: { condition: service_healthy } }
+      LAG_INTERVAL: 30s
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
 
 volumes:
   redpanda_data:
   minio_data:
   prometheus_data:
   grafana_data:
+
+networks:
+  default:
+    name: meridian
+    driver: bridge
