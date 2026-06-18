@@ -1,3 +1,5 @@
+# Meridian Stream — golangci-lint configuration
+# v1.0.0
 linters:
   enable:
     - gofmt
@@ -5,6 +7,15 @@ linters:
     - errcheck
     - staticcheck
     - unused
+
+linters-settings:
+  staticcheck:
+    checks: ["all"]
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
 
 run:
   timeout: 5m

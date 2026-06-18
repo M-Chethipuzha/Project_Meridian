@@ -1,8 +1,13 @@
+# Meridian Stream — CI Pipeline
+# Sprint 0 — v0.1.0
+
 name: CI
 
 on:
-  push: { branches: [main, "sprint/**"] }
-  pull_request: { branches: [main] }
+  push:
+    branches: [main, "sprint/**"]
+  pull_request:
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -16,32 +21,55 @@ jobs:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with: { go-version: "${{ env.GO_VERSION }}" }
-      - uses: golangci/golangci-lint-action@v6
-        with: { version: latest, args: --timeout=5m }
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
 
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with: { go-version: "${{ env.GO_VERSION }}" }
-      - uses: actions/cache@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
-      - run: go test -count=1 -race -v ./...
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Test
+        run: go test -count=1 -race -v ./...
 
   build:
     name: Build
     runs-on: ubuntu-latest
     needs: [lint, test]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with: { go-version: "${{ env.GO_VERSION }}" }
-      - run: go build ./...
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Build
+        run: go build ./...
