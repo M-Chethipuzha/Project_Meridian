@@ -4,8 +4,6 @@ All notable changes to Meridian Stream will be documented in this file.
 
 ## [v0.1.0] - 2026-06-21
 
-### Sprint 0 — Repository Scaffold and Infrastructure
-
 #### Added
 
 - **Repository scaffold**: Go module initialized, directory structure created for services, storage, deploy, benchmarks, tests, and docs
@@ -17,8 +15,6 @@ All notable changes to Meridian Stream will be documented in this file.
 - **Documentation**: PROJECT_PROMPT.md and AGENTS.md defining architecture, agent topology, and sprint roadmap
 
 ## [v0.2.0] - 2026-06-21
-
-### Sprint 1 — Wikimedia Producer, Redpanda, Consumer, Console Sink
 
 #### Added
 
@@ -33,8 +29,6 @@ All notable changes to Meridian Stream will be documented in this file.
 - **Unit tests**: Model tests, SSE reader tests (mock HTTP server), kafka integration test stubs
 
 ## [v0.3.0] - 2026-06-21
-
-### Sprint 2 — Avro, Schema Registry, Parquet, MinIO
 
 #### Added
 
@@ -56,8 +50,6 @@ All notable changes to Meridian Stream will be documented in this file.
 - Kafka producer/consumer decoupled from ChangeEvent serialization
 
 ## [v0.4.0] - 2026-06-21
-
-### Sprint 3 — Metrics, Grafana, Lag Monitoring
 
 #### Added
 
@@ -83,8 +75,6 @@ All notable changes to Meridian Stream will be documented in this file.
 
 ## [v0.5.0] - 2026-06-21
 
-### Sprint 4 — DLQ, Recovery, Backpressure, Schema Evolution
-
 #### Added
 
 - **DLQ writer**: `internal/almanac/kafka/dlq.go` — `DLQWriter` publishes failed messages to a dead-letter topic with error context headers (`x-error-type`, `x-error-message`, `x-original-topic`, `x-retry-count`, `x-original-timestamp`). `ShouldDLQ()` helper for retry-threshold logic. `ErrorType()` categorizes errors as decode_error, sink_error, or unknown
@@ -109,9 +99,8 @@ All notable changes to Meridian Stream will be documented in this file.
 [v0.1.0]: https://github.com/mathew/meridian-stream/releases/tag/v0.1.0
 [v0.2.0]: https://github.com/mathew/meridian-stream/releases/tag/v0.2.0
 [v0.3.0]: https://github.com/mathew/meridian-stream/releases/tag/v0.3.0
-## [v0.6.0] - 2026-06-21
 
-### Sprint 5 — Replay System, Amplifier, Benchmark Suite
+## [v0.6.0] - 2026-06-21
 
 #### Added
 
@@ -128,30 +117,6 @@ All notable changes to Meridian Stream will be documented in this file.
 - Makefile updated to Sprint 5 (v0.6.0) with benchmark and service run sections
 - AGENTS.md updated: Current Sprint → Sprint 5, Current Target → v0.6.0
 
-## [v1.0.0] - 2026-06-21
-
-### Sprint 6 — Kubernetes, Flink, Feast, Production Readiness
-
-#### Added
-
-- **Production health endpoints**: `internal/almanac/metrics/server.go` — ServeMetrics now serves `/healthz` (liveness) and `/readyz` (readiness) as HTTP 200 endpoints alongside `/metrics`. Every service automatically gets these probes for Kubernetes deployment
-- **Dockerfiles**: `deploy/docker/{producer,consumer,amplifier,replay,dlq-replay,transformer}.Dockerfile` — Multi-stage Alpine builds for all 6 services. Each binary is statically compiled with `CGO_ENABLED=0`, runs as non-root `meridian` user (UID 1001), and includes ca-certificates + tzdata
-- **Kubernetes manifests**: `deploy/k8s/` — Production-ready manifests for namespace, ConfigMap, Secrets, Deployments (producer, consumer, Prometheus, Grafana), StatefulSets (Redpanda, MinIO with PVCs), Services (ClusterIP for all, headless for stateful), and HPAs (producer CPU-based, consumer CPU + consumer-lag-based). Apply via `kustomize build deploy/k8s | kubectl apply -f -`
-- **Flink streaming job**: `services/transformer/` — Java Maven project (Java 21, Flink 1.20, Kafka connector 3.4). `EventTransformerJob` reads ChangeEvent JSON from Redpanda, computes 1-minute tumbling window aggregations (event counts by type, top wikis by edit volume), and sinks results to a secondary topic. Pakaged as uber-jar via maven-shade-plugin. Dockerfile included for containerized deployment
-- **Feast feature store**: `feature-store/` — Feast feature repository with entity definitions (`event`), FileSource pointing to MinIO Parquet paths, feature views (`change_event_features` for raw event fields, `edit_statistics` for hourly/daily aggregations), and a `meridian_features` FeatureService for ML serving. Includes `test_data.py` for local validation
-- **docker-compose service definitions**: Producer and consumer now build and run as Compose services alongside the infrastructure, enabling `docker compose up --build` for a full local pipeline
-- **Graceful shutdown**: All services handle SIGINT/SIGTERM with context propagation and deferred resource cleanup
-
-#### Changed
-
-- Metrics server moved from Prometheus-only to serving health + readiness + metrics on the same port
-- AGENTS.md updated: Current Sprint → Sprint 6 (complete), Current Target → v1.0.0
-- Go services emit /healthz and /readyz on their metrics ports for Kubernetes probe integration
-
-[v0.1.0]: https://github.com/mathew/meridian-stream/releases/tag/v0.1.0
-[v0.2.0]: https://github.com/mathew/meridian-stream/releases/tag/v0.2.0
-[v0.3.0]: https://github.com/mathew/meridian-stream/releases/tag/v0.3.0
 [v0.4.0]: https://github.com/mathew/meridian-stream/releases/tag/v0.4.0
 [v0.5.0]: https://github.com/mathew/meridian-stream/releases/tag/v0.5.0
 [v0.6.0]: https://github.com/mathew/meridian-stream/releases/tag/v0.6.0
-[v1.0.0]: https://github.com/mathew/meridian-stream/releases/tag/v1.0.0
