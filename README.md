@@ -70,6 +70,17 @@ benchmarks/          # k6 load tests + Go micro-benchmarks
 schemas/             # Avro schema definitions (v1, v2)
 ```
 
+## Documentation
+
+| Document | Description |
+|---|---|
+| [Architecture](docs/architecture.md) | System design, service topology, data model, deployment strategies |
+| [Roadmap](docs/roadmap.md) | Completed sprints, future plans, versioning |
+| [Benchmarks](docs/benchmarks.md) | Benchmark suite overview with links to detailed reports |
+| [Throughput Report](benchmarks/throughput.md) | Maximum sustainable event rate |
+| [Latency Report](benchmarks/latency.md) | End-to-end latency by pipeline stage |
+| [Capacity Report](benchmarks/capacity.md) | Breaking point and bottleneck analysis |
+
 ## Status
 
 **v1.0.0** — Production-ready. All sprints complete. See `CHANGELOG.md` for full history and `AGENTS.md` for the roadmap.

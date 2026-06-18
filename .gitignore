@@ -33,6 +33,13 @@ Thumbs.db
 
 # Agent / tooling
 .omo/
+.opencode/
+
+# Project files (dev tooling, not part of the pipeline)
+scripts/
+AGENTS.md
+opencode.json
+PROJECT_PROMPT.md
 
 # Feature store artifacts
 feature-store/data/
