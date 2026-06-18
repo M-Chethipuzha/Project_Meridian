@@ -1,55 +1,91 @@
 package kafka
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
 )
 
-type ErrorType int
-const (
-	ErrorDecode ErrorType = iota
-	ErrorSink
-	ErrorUnknown
-)
-
-func (e ErrorType) String() string { return []string{"decode_error", "sink_error", "unknown"}[e] }
-
+// DLQWriter publishes failed messages to a dead-letter queue topic.
 type DLQWriter struct {
 	writer *kafka.Writer
 	topic  string
 }
 
+// NewDLQWriter creates a DLQWriter that publishes to the given topic.
 func NewDLQWriter(brokers []string, topic string) *DLQWriter {
-	return &DLQWriter{
-		writer: &kafka.Writer{Addr: kafka.TCP(brokers...), Topic: topic, BatchTimeout: 10 * time.Millisecond, Async: true},
-		topic:  topic,
+	w := &kafka.Writer{
+		Addr:         kafka.TCP(brokers...),
+		Topic:        topic,
+		RequiredAcks: kafka.RequireAll,
+		Async:        false,
+		BatchTimeout: 10 * time.Millisecond,
 	}
+	return &DLQWriter{writer: w, topic: topic}
 }
 
-func (d *DLQWriter) WriteFailed(msg kafka.Message, cause error) error {
+// WriteFailed publishes a failed message to the DLQ topic with error context
+// encoded in the message headers.
+func (d *DLQWriter) WriteFailed(msg kafka.Message, err error) error {
+	headers := []kafka.Header{
+		{Key: "x-error-type", Value: []byte(errorType(err))},
+		{Key: "x-error-message", Value: []byte(err.Error())},
+		{Key: "x-original-topic", Value: []byte(msg.Topic)},
+		{Key: "x-retry-count", Value: []byte("0")},
+		{Key: "x-original-timestamp", Value: []byte(time.Now().String())},
+	}
+
 	dlqMsg := kafka.Message{
-		Key:   msg.Key,
-		Value: msg.Value,
-		Headers: []kafka.Header{
-			{Key: "x-original-topic", Value: []byte(msg.Topic)},
-			{Key: "x-original-partition", Value: []byte(fmt.Sprintf("%d", msg.Partition))},
-			{Key: "x-original-offset", Value: []byte(fmt.Sprintf("%d", msg.Offset))},
-			{Key: "x-error-type", Value: []byte(classifyError(cause))},
-			{Key: "x-error-message", Value: []byte(cause.Error())},
-			{Key: "x-failed-at", Value: []byte(time.Now().UTC().Format(time.RFC3339))},
-		},
+		Key:     msg.Key,
+		Value:   msg.Value,
+		Headers: append(headers, msg.Headers...),
 	}
-	return d.writer.WriteMessages(context.Background(), dlqMsg)
+
+	return d.writer.WriteMessages(nil, dlqMsg)
 }
 
-func (d *DLQWriter) Close() error { return d.writer.Close() }
+// Close shuts down the underlying writer.
+func (d *DLQWriter) Close() error {
+	if d.writer != nil {
+		return d.writer.Close()
+	}
+	return nil
+}
 
-func classifyError(err error) string {
+func errorType(err error) string {
 	msg := err.Error()
-	if strings.Contains(msg, "decode") || strings.Contains(msg, "unmarshal") { return "decode_error" }
-	if strings.Contains(msg, "sink") || strings.Contains(msg, "write") { return "sink_error" }
-	return "unknown"
+	switch {
+	case strings.Contains(msg, "decode"), strings.Contains(msg, "unmarshal"), strings.Contains(msg, "parse"):
+		return "decode_error"
+	case strings.Contains(msg, "write"), strings.Contains(msg, "flush"), strings.Contains(msg, "sink"):
+		return "sink_error"
+	default:
+		return "unknown"
+	}
 }
+
+// ShouldDLQ returns true when retryCount >= maxRetries, indicating the message
+// should be sent to the dead-letter queue.
+func ShouldDLQ(retryCount, maxRetries int) bool {
+	return retryCount >= maxRetries
+}
+
+// ExtractErrorFromHeaders reads the x-error-type header value from a set of
+// Kafka message headers. Returns empty string if not found.
+func ExtractErrorFromHeaders(headers []kafka.Header) string {
+	for _, h := range headers {
+		if h.Key == "x-error-type" {
+			return string(h.Value)
+		}
+	}
+	return ""
+}
+
+// ErrorType returns the error classification string for the given error.
+// Exported alias for external use.
+func ErrorType(err error) string {
+	return errorType(err)
+}
+
+

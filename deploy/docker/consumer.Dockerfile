@@ -1,18 +1,14 @@
-# Meridian Stream — Consumer
-# Build stage
-FROM golang:1.25-alpine AS build
-RUN apk add --no-cache gcc musl-dev
-WORKDIR /src
+FROM golang:1.25-alpine AS builder
+WORKDIR /build
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o /consumer ./services/consumer
+RUN CGO_ENABLED=0 go build -o /app ./services/consumer
 
-# Runtime stage
 FROM alpine:3.21
-RUN apk add --no-cache ca-certificates tzdata
-RUN adduser -D -u 1001 meridian
+RUN addgroup -S meridian && adduser -S meridian -G meridian
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=builder /app /app
 USER meridian
-COPY --from=build /consumer /consumer
 EXPOSE 8082
-ENTRYPOINT ["/consumer"]
+ENTRYPOINT ["/app"]

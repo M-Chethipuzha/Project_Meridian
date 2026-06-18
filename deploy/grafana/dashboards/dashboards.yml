@@ -1,7 +1,15 @@
+# Meridian Stream — Grafana Dashboard Provisioning
+# Sprint 3 — Metrics, Grafana, Lag Monitoring
+# v0.4.0
+
 apiVersion: 1
+
 providers:
-  - name: Meridian
-    folder: Meridian
+  - name: "Meridian"
+    orgId: 1
+    folder: "Meridian"
     type: file
+    disableDeletion: false
+    editable: true
     options:
       path: /etc/grafana/provisioning/dashboards

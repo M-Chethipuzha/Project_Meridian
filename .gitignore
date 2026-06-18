@@ -6,11 +6,20 @@ bin/
 *.so
 *.dylib
 
+# Test binary, build with `go test -c`
+*.test
+
+# Output of `go coverage`
+*.out
+*.prof
+coverage.html
+
 # IDE
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
 # OS
 .DS_Store
@@ -18,3 +27,22 @@ Thumbs.db
 
 # Docker
 .env
+
+# Temp
+/tmp/
+
+# Agent / tooling
+.omo/
+.opencode/
+
+# Project files (dev tooling, not part of the pipeline)
+scripts/
+AGENTS.md
+opencode.json
+PROJECT_PROMPT.md
+
+# Feature store artifacts
+feature-store/data/
+
+# Build artifacts
+temp/
